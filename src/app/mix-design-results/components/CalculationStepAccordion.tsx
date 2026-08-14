@@ -94,7 +94,7 @@ export default function CalculationStepAccordion({ steps }: CalculationStepAccor
                   key={`rail-step-${s.stepNumber}`}
                   type="button"
                   onClick={() => jumpToStep(s.stepNumber)}
-                  className={`w-full text-left p-2 rounded-sm transition-all flex items-center justify-between border text-[11px] font-mono-tech ${
+                  className={`w-full text-left p-2.5 rounded-sm transition-all flex items-start justify-between border text-[11px] font-mono-tech ${
                     isSelected
                       ? 'bg-primary text-primary-foreground font-bold border-primary shadow-xs'
                       : isBlocked || isDownstreamBlocked
@@ -102,12 +102,16 @@ export default function CalculationStepAccordion({ steps }: CalculationStepAccor
                       : 'bg-card text-foreground border-border hover:border-primary/40'
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-bold flex-shrink-0">0{s.stepNumber}</span>
-                    <span className="truncate text-[11px]" title={s.title}>{s.title}</span>
+                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <span className="font-bold flex-shrink-0 pt-0.5">0{s.stepNumber}</span>
+                    <span className="text-[11px] font-medium leading-snug break-words whitespace-normal" title={s.title}>
+                      {s.title}
+                    </span>
                   </div>
                   {isBlocked || isDownstreamBlocked ? (
-                    <span className="text-[9px] px-1 rounded-sm bg-warning/20 text-warning font-bold flex-shrink-0 ml-1">!</span>
+                    <span className="text-[9px] px-1 rounded-sm bg-warning/20 text-warning font-bold flex-shrink-0 ml-1.5 self-start mt-0.5">
+                      !
+                    </span>
                   ) : null}
                 </button>
               );
@@ -161,39 +165,59 @@ export default function CalculationStepAccordion({ steps }: CalculationStepAccor
                 {/* Header / Summary Bar */}
                 <button
                   onClick={() => toggle(step.stepNumber)}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                  className="w-full text-left p-3.5 md:p-4 hover:bg-muted/30 transition-colors space-y-2.5"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-mono-tech font-bold text-xs px-2 py-0.5 rounded bg-muted text-primary border border-border">
-                      STEP 0{step.stepNumber}
-                    </span>
-                    <span className="text-xs font-bold text-foreground truncate">{step.title}</span>
-                    <span className="hidden lg:inline-block text-[10px] font-mono-tech text-muted-foreground px-2 py-0.5 rounded bg-muted">
-                      {clauseText}
-                    </span>
+                  {/* Top Row: STEP Badge + Title + Reference Clause + Chevron */}
+                  <div className="flex items-center justify-between gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <span className="font-mono-tech font-bold text-xs px-2 py-0.5 rounded bg-muted text-primary border border-border flex-shrink-0">
+                        STEP 0{step.stepNumber}
+                      </span>
+                      <span className="text-xs md:text-sm font-bold text-foreground truncate sm:whitespace-normal">
+                        {step.title}
+                      </span>
+                      <span className="hidden sm:inline-flex items-center text-[10px] font-mono-tech text-muted-foreground px-2 py-0.5 rounded bg-muted/80 border border-border/40 whitespace-nowrap flex-shrink-0 ml-auto sm:ml-0">
+                        {clauseText}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="sm:hidden text-[10px] font-mono-tech text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                        {clauseText}
+                      </span>
+                      {isOpen ? (
+                        <ChevronUp size={16} className="text-muted-foreground" />
+                      ) : (
+                        <ChevronDown size={16} className="text-muted-foreground" />
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span
-                      className={`font-mono-tech font-bold text-xs ${
-                        isThisBlocked || isDownstreamBlocked ? 'text-warning font-semibold' : 'text-primary'
-                      }`}
-                    >
-                      {displayResult}
-                    </span>
-                    {isOpen ? <ChevronUp size={15} className="text-muted-foreground" /> : <ChevronDown size={15} className="text-muted-foreground" />}
+                  {/* Bottom Row: Full-Width Evaluated Result Bar */}
+                  <div
+                    className={`p-2 px-3 rounded text-xs font-mono-tech font-bold whitespace-normal break-words leading-relaxed border ${
+                      isThisBlocked || isDownstreamBlocked
+                        ? 'bg-warning/10 text-warning border-warning/30'
+                        : 'bg-primary/5 text-primary border-primary/20'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex-shrink-0">
+                        Evaluated Result:
+                      </span>
+                      <span className="text-foreground font-bold">{displayResult}</span>
+                    </div>
                   </div>
                 </button>
 
                 {/* Notebook Content Detail */}
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-3 border-t border-border/60 bg-muted/20 space-y-4 text-xs">
+                  <div className="px-4 md:px-5 pb-5 pt-3 border-t border-border/60 bg-muted/20 space-y-4 text-xs">
                     {/* Clause Header & Reference */}
-                    <div className="flex items-center justify-between text-[11px] pb-2 border-b border-border/60">
-                      <span className="font-bold text-primary uppercase tracking-wider">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] pb-2 border-b border-border/60">
+                      <span className="font-bold text-primary uppercase tracking-wider flex-shrink-0">
                         Reference Standard
                       </span>
-                      <span className="font-mono-tech font-semibold text-foreground">
+                      <span className="font-mono-tech font-semibold text-foreground whitespace-normal break-words text-left sm:text-right">
                         {clauseText}
                       </span>
                     </div>
@@ -204,11 +228,11 @@ export default function CalculationStepAccordion({ steps }: CalculationStepAccor
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
                           Input & Reference Parameters:
                         </span>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
                           {Object.entries(step.inputs).map(([k, v]) => (
-                            <div key={k} className="p-2 rounded bg-card border border-border">
-                              <span className="text-muted-foreground block text-[10px] truncate">{k}</span>
-                              <span className="font-mono-tech font-bold text-foreground">{String(v)}</span>
+                            <div key={k} className="p-2 rounded bg-card border border-border min-w-0">
+                              <span className="text-muted-foreground block text-[10px] truncate" title={k}>{k}</span>
+                              <span className="font-mono-tech font-bold text-foreground break-words whitespace-normal">{String(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -217,21 +241,21 @@ export default function CalculationStepAccordion({ steps }: CalculationStepAccor
 
                     {/* Formula Block */}
                     {step.formula && !isDownstreamBlocked && (
-                      <div className="p-3 rounded bg-card border border-border font-mono-tech text-xs text-foreground space-y-1">
+                      <div className="p-3 rounded bg-card border border-border font-mono-tech text-xs text-foreground space-y-1 min-w-0">
                         <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest block">
                           Engineering Formula:
                         </span>
-                        <p className="font-bold text-primary">{step.formula}</p>
+                        <p className="font-bold text-primary whitespace-pre-wrap break-words">{step.formula}</p>
                       </div>
                     )}
 
                     {/* Substitution Trace */}
                     {step.calculation && (
-                      <div className="p-3 rounded bg-card border border-border font-mono-tech text-xs text-foreground space-y-1">
+                      <div className="p-3 rounded bg-card border border-border font-mono-tech text-xs text-foreground space-y-1 min-w-0">
                         <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest block">
                           Mathematical Substitution & Trace:
                         </span>
-                        <p className="whitespace-pre-line leading-relaxed">
+                        <p className="whitespace-pre-line leading-relaxed break-words">
                           {isDownstreamBlocked
                             ? `Calculation step skipped because upstream Step 0${firstBlockedNumber} required missing reference data.`
                             : step.calculation}
@@ -240,11 +264,11 @@ export default function CalculationStepAccordion({ steps }: CalculationStepAccor
                     )}
 
                     {/* Final Step Result */}
-                    <div className="p-2.5 rounded bg-primary/5 border border-primary/20 flex items-center justify-between text-xs font-mono-tech">
-                      <span className="font-bold text-primary uppercase tracking-wider text-[11px]">
+                    <div className="p-2.5 rounded bg-primary/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono-tech min-w-0">
+                      <span className="font-bold text-primary uppercase tracking-wider text-[11px] flex-shrink-0">
                         Step 0{step.stepNumber} Evaluated Result:
                       </span>
-                      <span className="font-extrabold text-foreground">{displayResult}</span>
+                      <span className="font-extrabold text-foreground whitespace-normal break-words text-left sm:text-right">{displayResult}</span>
                     </div>
                   </div>
                 )}

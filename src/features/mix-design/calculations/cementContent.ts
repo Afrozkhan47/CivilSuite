@@ -22,24 +22,7 @@
  */
 
 import type { CalculationOutput, EngineContext } from './engine/types';
-
-// IS 456:2000, Table 5 — Verified minimum cement content by exposure class
-export const IS456_MIN_CEMENT: Record<string, number> = {
-  mild: 300,
-  moderate: 300,
-  severe: 320,
-  very_severe: 340,
-  extreme: 360,
-};
-
-// IS 456:2000, Table 5 — Verified maximum W/C by exposure class
-export const IS456_MAX_WC: Record<string, number> = {
-  mild: 0.55,
-  moderate: 0.50,
-  severe: 0.45,
-  very_severe: 0.45,
-  extreme: 0.40,
-};
+import { lookupDurabilityLimits } from '../reference-data';
 
 // IS 10262:2019, Clause 6.5 Note — absolute maximum cement content
 const MAX_CEMENT_CONTENT = 450; // kg/m³
@@ -64,8 +47,20 @@ export function calculateCementContent(
   const rawCement = waterContent / wcRatio;
 
   // ─── Apply minimum cement content from IS 456:2000 ────────────────────────
-  const exposureKey = ctx.exposureCondition?.toLowerCase().replace(' ', '_') ?? 'moderate';
-  const minCement = IS456_MIN_CEMENT[exposureKey] ?? 300; // fallback to moderate if unknown
+  const durabilityLimits = lookupDurabilityLimits(ctx.exposureCondition);
+  if (!durabilityLimits) {
+    return {
+      value: 0,
+      unit: 'kg/m³',
+      formula: 'C = W / (W/C) [subject to IS 456:2000 Table 5 min and IS 10262 max 450 kg/m³]',
+      substitution: `Verified IS 456:2000 Table 5 durability reference data is unavailable for exposure condition: ${ctx.exposureCondition}`,
+      result: 'reference-data-required: IS 456:2000 Table 5 durability limit not available',
+      isCodeClause: 'IS 10262:2019, Clause 6.5; IS 456:2000, Table 5',
+      isPlaceholder: false,
+    };
+  }
+
+  const minCement = durabilityLimits.minCementContent;
 
   const adoptedCement = Math.max(rawCement, minCement);
   let governedBy = 'strength (W/C formula)';

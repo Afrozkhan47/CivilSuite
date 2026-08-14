@@ -71,36 +71,44 @@ const CEMENT_TYPE_DEFAULT_CURVE: Record<string, Figure1Curve> = {
  */
 export function selectCementStrengthCurve(
   cementType: string,
-  actualCementStrength: number | null
+  actualCementStrength: number | null | undefined
 ): CurveSelectionResult {
 
   // ─── Priority 1: Actual cement strength available ──────────────────────────
-  if (actualCementStrength !== null) {
+  const validStrength =
+    actualCementStrength !== null &&
+    actualCementStrength !== undefined &&
+    !isNaN(actualCementStrength) &&
+    actualCementStrength > 0
+      ? actualCementStrength
+      : null;
+
+  if (validStrength !== null) {
     let curve: Figure1Curve;
 
-    if (actualCementStrength >= CURVE3_MIN) {
+    if (validStrength >= CURVE3_MIN) {
       curve = 'curve3';
-    } else if (actualCementStrength >= CURVE2_MIN && actualCementStrength < CURVE2_MAX) {
+    } else if (validStrength >= CURVE2_MIN && validStrength < CURVE2_MAX) {
       curve = 'curve2';
-    } else if (actualCementStrength >= CURVE1_MIN && actualCementStrength < CURVE1_MAX) {
+    } else if (validStrength >= CURVE1_MIN && validStrength < CURVE1_MAX) {
       curve = 'curve1';
     } else {
       // Strength below 33 N/mm² — outside defined curve range
       // Default to Curve 1 and flag as out of typical range
       return {
         curve: 'curve1',
-        reason: `Cement strength ${actualCementStrength} N/mm² is below Curve 1 range (33 N/mm²). Defaulting to Curve 1. Verify with site data.`,
+        reason: `Cement strength ${validStrength} N/mm² is below Curve 1 range (33 N/mm²). Defaulting to Curve 1. Verify with site data.`,
         cementType,
-        actualCementStrength,
+        actualCementStrength: validStrength,
         isDefault: true,
       };
     }
 
     return {
       curve,
-      reason: `Actual cement 28-day strength ${actualCementStrength} N/mm² → ${curve} selected per IS 10262:2019 Figure 1 range`,
+      reason: `Actual cement 28-day strength ${validStrength} N/mm² → ${curve} selected per IS 10262:2019 Figure 1 range`,
       cementType,
-      actualCementStrength,
+      actualCementStrength: validStrength,
       isDefault: false,
     };
   }

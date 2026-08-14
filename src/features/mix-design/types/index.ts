@@ -230,6 +230,19 @@ export interface MixDesignResult {
   /** Reference data version used for this calculation */
   referenceDataVersion?: ReferenceDataVersion;
   calculatedAt?: string;
+  redesignMetadata?: RedesignMetadata;
+}
+
+export interface RedesignMetadata {
+  parentProjectId?: string;
+  attemptNumber?: number;
+  originalFailureReason?: string;
+  remediationStrategy?: string;
+  remediationLog?: string[];
+  changedParameters?: Record<string, {
+    before: unknown;
+    after: unknown;
+  }>;
 }
 
 /**
@@ -280,6 +293,7 @@ export interface SavedProject extends SupabaseEntity {
   result?: MixDesignResult;
   tags?: string[];
   trialMixes?: TrialMix[];
+  redesignMetadata?: RedesignMetadata;
 }
 
 // ─── Cube Strength Record ─────────────────────────────────────────────────────

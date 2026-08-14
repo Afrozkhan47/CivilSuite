@@ -8,9 +8,11 @@ import {
   Save,
   Printer,
   AlertTriangle,
+  Wrench,
 } from 'lucide-react';
 
 import CalculationStepAccordion from './CalculationStepAccordion';
+import { RedesignAssistant } from './RedesignAssistant';
 import type { MixDesignResult, MixDesignInput } from '@/features/mix-design/types';
 import { runMixDesignCalculation } from '@/features/mix-design/calculations';
 import { getCentralizedMixStatus, formatStepResult } from '@/features/mix-design/utils/status';
@@ -61,6 +63,7 @@ const DEFAULT_INPUT: MixDesignInput = {
 
 export default function MixDesignResultsContent() {
   const [saved, setSaved] = useState(false);
+  const [showRedesignAssistant, setShowRedesignAssistant] = useState(false);
   const [input, setInput] = useState<MixDesignInput>(DEFAULT_INPUT);
   const { saveProject, projects } = useProjectStore();
 
@@ -329,6 +332,15 @@ export default function MixDesignResultsContent() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          {statusInfo.status === 'NON_COMPLIANT' && (
+            <button
+              onClick={() => setShowRedesignAssistant(true)}
+              className="btn-warning flex items-center gap-1.5 text-xs font-mono-tech font-bold"
+            >
+              <Wrench size={14} />
+              <span>Review & Redesign Mix</span>
+            </button>
+          )}
           <button
             onClick={handleSave}
             className={`btn-secondary flex items-center gap-1.5 text-xs ${saved ? 'text-success border-success' : ''}`}
@@ -446,7 +458,7 @@ export default function MixDesignResultsContent() {
               </div>
 
               {/* Compliance Status */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div
                   className={`px-4 py-2 rounded-sm text-xs font-bold font-mono-tech uppercase tracking-wider border ${
                     isPass
@@ -456,6 +468,15 @@ export default function MixDesignResultsContent() {
                 >
                   {isPass ? '✓ IS 10262 COMPLIANT (PASS)' : '✕ NON-COMPLIANT (FAIL)'}
                 </div>
+                {statusInfo.status === 'NON_COMPLIANT' && (
+                  <button
+                    onClick={() => setShowRedesignAssistant(true)}
+                    className="px-3 py-2 rounded-sm text-xs font-bold font-mono-tech uppercase tracking-wider border bg-warning/15 text-warning border-warning/40 hover:bg-warning/20 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Wrench size={14} />
+                    <span>Review & Redesign Mix</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -640,6 +661,21 @@ export default function MixDesignResultsContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {showRedesignAssistant && (
+        <RedesignAssistant
+          originalInput={input}
+          originalResult={result}
+          onAdoptRedesign={(newInput) => {
+            setInput(newInput);
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('civilsuite-current-input', JSON.stringify(newInput));
+            }
+            setShowRedesignAssistant(false);
+          }}
+          onClose={() => setShowRedesignAssistant(false)}
+        />
       )}
     </div>
   );

@@ -632,16 +632,16 @@ export interface CAProportionHSEntry {
 
 export const TABLE_10_COARSE_AGGREGATE_PROPORTION_HS: CAProportionHSEntry[] = [
   { maxAggregateSize: 10.0, zone: 'III', volumeFractionCA: 0.56, source: 'IS 10262:2019, Table 10' },
-  { maxAggregateSize: 10.0, zone: 'II',  volumeFractionCA: 0.54, source: 'IS 10262:2019, Table 10' },
-  { maxAggregateSize: 10.0, zone: 'I',   volumeFractionCA: 0.52, source: 'IS 10262:2019, Table 10' },
+  { maxAggregateSize: 10.0, zone: 'II', volumeFractionCA: 0.54, source: 'IS 10262:2019, Table 10' },
+  { maxAggregateSize: 10.0, zone: 'I', volumeFractionCA: 0.52, source: 'IS 10262:2019, Table 10' },
 
   { maxAggregateSize: 12.5, zone: 'III', volumeFractionCA: 0.58, source: 'IS 10262:2019, Table 10' },
-  { maxAggregateSize: 12.5, zone: 'II',  volumeFractionCA: 0.56, source: 'IS 10262:2019, Table 10' },
-  { maxAggregateSize: 12.5, zone: 'I',   volumeFractionCA: 0.54, source: 'IS 10262:2019, Table 10' },
+  { maxAggregateSize: 12.5, zone: 'II', volumeFractionCA: 0.56, source: 'IS 10262:2019, Table 10' },
+  { maxAggregateSize: 12.5, zone: 'I', volumeFractionCA: 0.54, source: 'IS 10262:2019, Table 10' },
 
   { maxAggregateSize: 20.0, zone: 'III', volumeFractionCA: 0.68, source: 'IS 10262:2019, Table 10' },
-  { maxAggregateSize: 20.0, zone: 'II',  volumeFractionCA: 0.66, source: 'IS 10262:2019, Table 10' },
-  { maxAggregateSize: 20.0, zone: 'I',   volumeFractionCA: 0.64, source: 'IS 10262:2019, Table 10' },
+  { maxAggregateSize: 20.0, zone: 'II', volumeFractionCA: 0.66, source: 'IS 10262:2019, Table 10' },
+  { maxAggregateSize: 20.0, zone: 'I', volumeFractionCA: 0.64, source: 'IS 10262:2019, Table 10' },
 ];
 
 export const WC_ADJUSTMENT_RULE_CA_FRACTION_HS = {
@@ -757,9 +757,6 @@ export function lookupCAFractionHighStrength(
 // by exposure class. These durability limits must be applied during the
 // calculation engine's compliance check steps.
 //
-// ⚠️ PENDING VERIFICATION: Exact values not yet inserted.
-//    Do NOT insert until verified from IS 456:2000 Table 5.
-
 export type ExposureClass = 'mild' | 'moderate' | 'severe' | 'very_severe' | 'extreme';
 
 export interface DurabilityLimitEntry {
@@ -771,16 +768,75 @@ export interface DurabilityLimitEntry {
 }
 
 /**
- * ⚠️ NOT YET POPULATED — Awaiting verification from IS 456:2000, Table 5.
+ * IS 456:2000 Table 5 — Minimum Cement Content, Maximum W/C Ratio, and Minimum Grade
+ *
+ * Baseline scope:
+ *   - Reinforced Concrete Construction (RCC)
+ *   - 20 mm nominal maximum aggregate size
+ *
+ * Aggregate-size adjustments are intentionally NOT applied here until
+ * corresponding verified reference data is populated.
  */
 export const IS456_TABLE5_DURABILITY_LIMITS: DurabilityLimitEntry[] = [
-  // TODO: Insert verified values from IS 456:2000, Table 5.
+  {
+    exposureClass: 'mild',
+    maxWCRatio: 0.55,
+    minCementContent: 300,
+    minGrade: 'M20',
+    source: 'IS 456:2000, Table 5 — RCC, 20 mm nominal maximum aggregate size',
+  },
+  {
+    exposureClass: 'moderate',
+    maxWCRatio: 0.50,
+    minCementContent: 300,
+    minGrade: 'M25',
+    source: 'IS 456:2000, Table 5 — RCC, 20 mm nominal maximum aggregate size',
+  },
+  {
+    exposureClass: 'severe',
+    maxWCRatio: 0.45,
+    minCementContent: 320,
+    minGrade: 'M30',
+    source: 'IS 456:2000, Table 5 — RCC, 20 mm nominal maximum aggregate size',
+  },
+  {
+    exposureClass: 'very_severe',
+    maxWCRatio: 0.45,
+    minCementContent: 340,
+    minGrade: 'M35',
+    source: 'IS 456:2000, Table 5 — RCC, 20 mm nominal maximum aggregate size',
+  },
+  {
+    exposureClass: 'extreme',
+    maxWCRatio: 0.40,
+    minCementContent: 360,
+    minGrade: 'M40',
+    source: 'IS 456:2000, Table 5 — RCC, 20 mm nominal maximum aggregate size',
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP UTILITIES
 // ═══════════════════════════════════════════════════════════════════════════════
-
+/**
+ * Lookup IS 456:2000 Table 5 durability requirements.
+ *
+ * V1 scope:
+ *   - RCC
+ *   - 20 mm nominal maximum aggregate size baseline
+ *
+ * Aggregate-size adjustments are intentionally NOT applied here until
+ * the corresponding verified IS 456 reference data is populated.
+ */
+export function lookupDurabilityLimits(
+  exposureClass: ExposureClass | string
+): DurabilityLimitEntry | null {
+  return (
+    IS456_TABLE5_DURABILITY_LIMITS.find(
+      (entry) => entry.exposureClass === exposureClass
+    ) ?? null
+  );
+}
 /**
  * Linear interpolation between two known data points.
  * Returns the estimated Y for a given X.

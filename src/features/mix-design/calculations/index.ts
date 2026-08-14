@@ -25,11 +25,11 @@
  */
 
 import type { MixDesignInput, MixDesignResult, CalculationStep } from '../types';
-import { lookupAirContent, lookupAirContentHighStrength } from '../reference-data';
+import { lookupAirContent, lookupAirContentHighStrength, lookupDurabilityLimits } from '../reference-data';
 import { calculateTargetStrength } from './targetStrength';
 import { calculateStrengthBasedWCRatio } from './wcRatio';
 import { calculateWaterContent } from './waterContent';
-import { calculateCementContent, IS456_MAX_WC, IS456_MIN_CEMENT } from './cementContent';
+import { calculateCementContent } from './cementContent';
 import { calculateAggregateVolumes } from './aggregateVolume';
 import { calculateMoistureCorrection } from './moistureCorrection';
 import { calculateMixRatio } from './mixRatio';
@@ -82,8 +82,8 @@ export function runMixDesignCalculation(input: MixDesignInput): MixDesignResult 
 
   // ─── Step 3b: Durability W/C Limit (IS 456:2000 Table 5) ─────────────────
   // Look up max W/C for this exposure class from IS 456 verified data.
-  const exposureKey = ctx.exposureCondition?.toLowerCase().replace(' ', '_') ?? 'moderate';
-  const durabilityMaxWC = IS456_MAX_WC[exposureKey] ?? null;
+  const durabilityLimits = lookupDurabilityLimits(ctx.exposureCondition);
+  const durabilityMaxWC = durabilityLimits?.maxWCRatio ?? null;
   const durabilityCheck = applyDurabilityLimit(step3strength.value, durabilityMaxWC);
 
   // The recommended W/C ratio is the lower of strength-based and durability limit.
@@ -215,9 +215,10 @@ export function runMixDesignCalculation(input: MixDesignInput): MixDesignResult 
   // 4. Cement Compliance
   let cementStatus: 'pass' | 'fail' | 'warning' | 'pending' = 'pending';
   if (isFullyCalculated) {
-    const exposureKey2 = ctx.exposureCondition?.toLowerCase().replace(' ', '_') ?? 'moderate';
-    const minCementLimit = IS456_MIN_CEMENT ? (IS456_MIN_CEMENT[exposureKey2] ?? 300) : 300;
-    if (finalCement > 450) {
+    const minCementLimit = durabilityLimits?.minCementContent ?? null;
+    if (minCementLimit === null) {
+      cementStatus = 'pending';
+    } else if (finalCement > 450) {
       cementStatus = 'fail'; // Exceeds IS 10262 max
     } else if (finalCement < minCementLimit) {
       cementStatus = 'fail'; // Below IS 456 min

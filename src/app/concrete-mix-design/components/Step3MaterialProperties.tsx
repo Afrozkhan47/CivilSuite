@@ -11,7 +11,7 @@ const schema = z.object({
   cement: z.object({
     type: z.string().min(1, 'Cement type required'),
     specificGravity: z.coerce.number().min(2.5, 'Min SG is 2.5').max(3.5, 'Max SG is 3.5'),
-    grade: z.coerce.number().optional(),
+    grade: z.coerce.number().optional().transform((val) => (val === 0 ? undefined : val)),
   }),
   fineAggregate: z.object({
     specificGravity: z.coerce.number().min(2.0, 'Min SG is 2.0').max(3.2, 'Max SG is 3.2'),

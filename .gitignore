@@ -39,3 +39,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Local audit / temporary files
+*.out
+scratch_*.ts
+validation_*.txt
+m30_out.txt
+
+# IDE / AI tooling
+.continue/
+/.gemini/
+
+# OS
+.DS_Store

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FileText, Download, FlaskConical, FolderOpen, Clock, CheckCircle2, ChevronRight } from 'lucide-react';
+import { FileText, Download, FlaskConical, Clock, CheckCircle2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getCentralizedMixStatus } from '@/features/mix-design/utils/status';
 import Link from 'next/link';
@@ -90,13 +90,12 @@ export default function ReportsContent() {
                       </span>
                       {statusInfo && (
                         <span
-                          className={`px-2 py-0.5 rounded-sm text-[10px] font-mono-tech font-bold uppercase tracking-wider border ${
-                            statusInfo.status === 'COMPLIANT'
+                          className={`px-2 py-0.5 rounded-sm text-[10px] font-mono-tech font-bold uppercase tracking-wider border ${statusInfo.status === 'COMPLIANT'
                               ? 'bg-success/15 text-success border-success/30'
                               : statusInfo.status === 'NON_COMPLIANT'
-                              ? 'bg-error/15 text-error border-error/30'
-                              : 'bg-warning/15 text-warning border-warning/30'
-                          }`}
+                                ? 'bg-error/15 text-error border-error/30'
+                                : 'bg-warning/15 text-warning border-warning/30'
+                            }`}
                         >
                           {statusInfo.heroBadge}
                         </span>

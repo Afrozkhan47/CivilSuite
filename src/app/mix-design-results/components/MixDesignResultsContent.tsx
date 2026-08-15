@@ -66,7 +66,7 @@ const DEFAULT_INPUT: MixDesignInput = {
 
 export default function MixDesignResultsContent() {
   const [showRedesignAssistant, setShowRedesignAssistant] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const { projects, isLoading, fetchProjects } = useProjectStore();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);

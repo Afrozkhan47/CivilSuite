@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /login
+Disallow: /concrete-mix-design
+Disallow: /mix-design-results
+Disallow: /saved-projects
+Disallow: /reports
+Disallow: /auth/

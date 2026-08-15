@@ -55,7 +55,7 @@ export default function MetricCard({
           )}
         </div>
         {icon && (
-          <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0`}>
+          <div className={`w-11 h-11 rounded-sm ${iconBg} flex items-center justify-center flex-shrink-0`}>
             {icon}
           </div>
         )}

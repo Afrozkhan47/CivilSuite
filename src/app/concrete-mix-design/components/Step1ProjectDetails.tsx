@@ -33,15 +33,13 @@ export default function Step1ProjectDetails({ data, onNext }: Step1Props) {
     defaultValues: data,
   });
 
-  console.log('STEP 1 RENDER ERRORS:', JSON.stringify(errors));
-
   const onSubmit = (values: FormValues) => {
-    console.log('STEP 1 ONSUBMIT FIRED:', values);
     onNext(values as ProjectDetails);
   };
 
-  const onError = (errors: any) => {
-    console.log('STEP 1 FORM ERRORS: ' + JSON.stringify(errors));
+  const onError = (formErrors: typeof errors) => {
+    const errorList = Object.entries(formErrors).map(([key, val]) => `${key}: ${val?.message}`);
+    console.log('STEP 1 FORM VALIDATION ERRORS:', errorList);
   };
 
   return (
@@ -119,7 +117,7 @@ export default function Step1ProjectDetails({ data, onNext }: Step1Props) {
                   id="engineerName"
                   type="text"
                   className="input-field text-xs rounded-sm"
-                  placeholder="e.g. Sudies Shaikh, M.Tech (Structural)"
+                  placeholder="e.g. Er. Rajesh Kumar, M.Tech (Structural)"
                   {...register('engineerName')}
                 />
                 {errors.engineerName && <p className="error-text">{errors.engineerName.message}</p>}

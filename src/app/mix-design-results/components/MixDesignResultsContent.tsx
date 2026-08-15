@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
   Download,
-  Save,
   Printer,
   AlertTriangle,
   Wrench,
+  Save,
+  Check,
+  Loader2,
 } from 'lucide-react';
 
 import CalculationStepAccordion from './CalculationStepAccordion';
@@ -16,7 +18,8 @@ import { RedesignAssistant } from './RedesignAssistant';
 import type { MixDesignResult, MixDesignInput } from '@/features/mix-design/types';
 import { runMixDesignCalculation } from '@/features/mix-design/calculations';
 import { getCentralizedMixStatus, formatStepResult } from '@/features/mix-design/utils/status';
-import { useProjectStore } from '@/store/useProjectStore';
+import { useProjectStore, isValidUUID } from '@/store/useProjectStore';
+import { useAuth } from '@/context/AuthContext';
 
 // PDF Text Sanitizer to prevent font output issues
 function sanitizePdfText(str: string): string {
@@ -39,7 +42,7 @@ const DEFAULT_INPUT: MixDesignInput = {
   projectDetails: {
     projectName: 'Untitled Project',
     clientName: '—',
-    engineerName: 'Sudies Shaikh',
+    engineerName: 'Consulting Engineer',
     date: new Date().toISOString().split('T')[0],
     location: '—',
     remarks: '',
@@ -62,35 +65,87 @@ const DEFAULT_INPUT: MixDesignInput = {
 };
 
 export default function MixDesignResultsContent() {
-  const [saved, setSaved] = useState(false);
   const [showRedesignAssistant, setShowRedesignAssistant] = useState(false);
-  const [input, setInput] = useState<MixDesignInput>(DEFAULT_INPUT);
-  const { saveProject, projects } = useProjectStore();
+  const { user, loading: authLoading } = useAuth();
+  const { projects, isLoading, fetchProjects } = useProjectStore();
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Derive initial editingProjectId synchronously on mount without effect loop
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
-      const projectId = searchParams.get('projectId');
-      if (projectId) {
-        const saved = projects.find((p) => p.id === projectId);
-        if (saved?.input) {
-          setInput(saved.input);
-          return;
-        }
-      }
+      const pid = searchParams.get('projectId');
+      if (pid && isValidUUID(pid)) return pid;
+      const stored = sessionStorage.getItem('civilsuite-editing-project-id');
+      if (stored && isValidUUID(stored)) return stored;
+    }
+    return null;
+  });
+
+  // Derive initial input synchronously on mount without effect loop
+  const [input, setInput] = useState<MixDesignInput>(() => {
+    if (typeof window !== 'undefined') {
       const stored = sessionStorage.getItem('civilsuite-current-input');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           if (parsed && typeof parsed === 'object' && parsed.projectDetails) {
-            setInput(parsed);
+            return parsed;
           }
         } catch {
-          // fallback to default
+          // fallback
         }
       }
+      const searchParams = new URLSearchParams(window.location.search);
+      const pid = searchParams.get('projectId');
+      if (pid && isValidUUID(pid)) {
+        const saved = useProjectStore.getState().projects.find((p) => p.id === pid);
+        if (saved?.input) return saved.input;
+      }
     }
-  }, [projects]);
+    return DEFAULT_INPUT;
+  });
+
+  // Trigger project fetch on mount if store hasn't loaded projects yet
+  React.useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  // Deep link state machine definitions
+  const isUuidTarget = Boolean(editingProjectId && isValidUUID(editingProjectId));
+  const matchingProject = isUuidTarget ? projects.find((p) => p.id === editingProjectId) : undefined;
+  const isExistingProject = isUuidTarget && Boolean(matchingProject);
+  const isStoreLoading = isUuidTarget && (authLoading || isLoading) && !matchingProject;
+  const isProjectNotFound = isUuidTarget && !authLoading && !isLoading && !matchingProject;
+
+  // Hydrate input when matching project arrives from backend / store
+  React.useEffect(() => {
+    if (isUuidTarget && matchingProject) {
+      if (typeof window !== 'undefined') {
+        const storedInput = sessionStorage.getItem('civilsuite-current-input');
+        const storedEditId = sessionStorage.getItem('civilsuite-editing-project-id');
+        // If user came directly from in-flight wizard editing this exact project, prioritize in-flight input
+        if (storedInput && storedEditId === editingProjectId) {
+          try {
+            const parsed = JSON.parse(storedInput);
+            if (parsed && typeof parsed === 'object' && parsed.projectDetails) {
+              setInput(parsed);
+              return;
+            }
+          } catch {
+            // fallback
+          }
+        }
+
+        // Direct deep-link or fresh view: hydrate from saved project
+        setInput(matchingProject.input);
+        sessionStorage.setItem('civilsuite-current-input', JSON.stringify(matchingProject.input));
+        sessionStorage.setItem('civilsuite-editing-project-id', editingProjectId!);
+      }
+    }
+  }, [isUuidTarget, matchingProject, editingProjectId]);
 
   const result: MixDesignResult = React.useMemo(
     () => runMixDesignCalculation(input),
@@ -108,10 +163,53 @@ export default function MixDesignResultsContent() {
   const isIncomplete = statusInfo.status === 'INCOMPLETE';
   const isPass = statusInfo.status === 'COMPLIANT';
 
-  const handleSave = () => {
-    saveProject(input, result);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const wizardBackUrl = isExistingProject
+    ? `/concrete-mix-design?projectId=${editingProjectId}&step=2`
+    : `/concrete-mix-design?step=4`;
+
+  // Explicit Save Project / Save Changes action handler
+  const handleSave = async () => {
+    if (isStoreLoading) {
+      setSaveError('Please wait for project loading to complete.');
+      return;
+    }
+    if (isProjectNotFound) {
+      setSaveError('Cannot save: The target project was not found in your account.');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    const store = useProjectStore.getState();
+
+    try {
+      if (isExistingProject && editingProjectId) {
+        store.updateProject(editingProjectId, {
+          input,
+          result,
+          status: 'calculated',
+          updatedAt: new Date().toISOString(),
+        });
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else if (!isUuidTarget) {
+        const savedProj = store.saveProject(input, result);
+        setEditingProjectId(savedProj.id);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('civilsuite-editing-project-id', savedProj.id);
+          const url = new URL(window.location.href);
+          url.searchParams.set('projectId', savedProj.id);
+          window.history.replaceState({}, '', url.toString());
+        }
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (err: any) {
+      console.error('Failed to save project:', err);
+      setSaveError(err?.message || 'Failed to save project. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePrint = () => {
@@ -317,9 +415,9 @@ export default function MixDesignResultsContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Link href="/concrete-mix-design" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 font-semibold">
+            <Link href={wizardBackUrl} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 font-semibold">
               <ArrowLeft size={13} />
-              <span>Back to Mix Wizard</span>
+              <span>{editingProjectId ? 'Return to Design Parameters' : 'Back to Mix Wizard'}</span>
             </Link>
           </div>
           <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
@@ -331,7 +429,55 @@ export default function MixDesignResultsContent() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {isStoreLoading ? (
+            <button
+              disabled
+              className="flex items-center gap-1.5 text-xs font-mono-tech font-bold px-3 py-1.5 rounded-sm border border-border bg-muted/50 text-muted-foreground cursor-not-allowed opacity-75"
+            >
+              <Loader2 size={14} className="animate-spin" />
+              <span>Loading Project...</span>
+            </button>
+          ) : isProjectNotFound ? (
+            <button
+              disabled
+              title="Project not found in your account"
+              className="flex items-center gap-1.5 text-xs font-mono-tech font-bold px-3 py-1.5 rounded-sm border border-error/30 bg-error/10 text-error cursor-not-allowed opacity-75"
+            >
+              <AlertTriangle size={14} />
+              <span>Project Not Found</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={isSaving || saveSuccess}
+              className={`flex items-center gap-1.5 text-xs font-mono-tech font-bold px-3 py-1.5 rounded-sm transition-all border ${
+                saveSuccess
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                  : isExistingProject
+                    ? 'btn-secondary'
+                    : 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
+              }`}
+            >
+              {saveSuccess ? (
+                <>
+                  <Check size={14} className="text-emerald-500" />
+                  <span>{isExistingProject ? 'Changes Saved' : 'Project Saved'}</span>
+                </>
+              ) : isSaving ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span>{isExistingProject ? 'Save Changes' : 'Save Project'}</span>
+                </>
+              )}
+            </button>
+          )}
+
           {statusInfo.status === 'NON_COMPLIANT' && (
             <button
               onClick={() => setShowRedesignAssistant(true)}
@@ -341,13 +487,6 @@ export default function MixDesignResultsContent() {
               <span>Review & Redesign Mix</span>
             </button>
           )}
-          <button
-            onClick={handleSave}
-            className={`btn-secondary flex items-center gap-1.5 text-xs ${saved ? 'text-success border-success' : ''}`}
-          >
-            <Save size={14} />
-            <span>{saved ? 'Saved!' : 'Save Project'}</span>
-          </button>
           <button onClick={handlePrint} className="btn-secondary flex items-center gap-1.5 text-xs">
             <Printer size={14} />
             <span>Print</span>
@@ -358,6 +497,53 @@ export default function MixDesignResultsContent() {
           </button>
         </div>
       </div>
+
+      {/* ─── LOADING PROJECT DATA BANNER ──────────────────────────────────── */}
+      {isStoreLoading && (
+        <div className="bg-card border border-primary/30 rounded-sm shadow-xs p-4 flex items-center gap-3 font-mono-tech">
+          <Loader2 className="text-primary animate-spin flex-shrink-0" size={18} />
+          <div>
+            <h3 className="font-bold text-xs text-foreground uppercase tracking-wider">
+              Loading Saved Project...
+            </h3>
+            <p className="text-[11px] text-muted-foreground font-sans mt-0.5">
+              Retrieving project calculation data from your workspace.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── PROJECT NOT FOUND ERROR BANNER ───────────────────────────────── */}
+      {isProjectNotFound && (
+        <div className="bg-card border border-error/40 rounded-sm shadow-xs p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono-tech">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-error flex-shrink-0 mt-0.5" size={18} />
+            <div>
+              <h3 className="font-bold text-xs text-foreground uppercase tracking-wider">
+                Project Not Found ({editingProjectId})
+              </h3>
+              <p className="text-[11px] text-muted-foreground font-sans mt-0.5">
+                The requested project ID does not exist in your account or may have been deleted. Saving has been disabled to prevent accidental duplication.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 font-sans">
+            <Link href="/saved-projects" className="btn-secondary text-xs px-3 py-1.5 font-mono-tech">
+              Project History
+            </Link>
+            <Link href="/concrete-mix-design?mode=new" className="btn-primary text-xs px-3 py-1.5 font-mono-tech font-bold">
+              New Mix Design
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-sm text-destructive text-xs flex items-center gap-2">
+          <AlertTriangle size={14} className="flex-shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
 
       {/* ─── INCOMPLETE CALCULATION EXCEPTION VIEW ─────────────────────────── */}
       {isIncomplete ? (
@@ -412,7 +598,7 @@ export default function MixDesignResultsContent() {
                 )}
 
                 <div className="pt-2">
-                  <Link href="/concrete-mix-design" className="btn-primary inline-flex items-center gap-2 text-xs font-mono-tech font-bold">
+                  <Link href={wizardBackUrl} className="btn-primary inline-flex items-center gap-2 text-xs font-mono-tech font-bold">
                     <ArrowLeft size={13} />
                     <span>Return to Design Parameters</span>
                   </Link>

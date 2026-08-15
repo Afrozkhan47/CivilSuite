@@ -289,6 +289,7 @@ export interface TrialMix extends SupabaseEntity {
 export interface SavedProject extends SupabaseEntity {
   schemaVersion?: number; // 1 = legacy pre-Phase 5, 2 = Phase 5+
   status: ProjectStatus;
+  isFavorite?: boolean;
   input: MixDesignInput;
   result?: MixDesignResult;
   tags?: string[];

@@ -2,12 +2,21 @@
 
 import React from 'react';
 import { Menu, Search, BookOpen, Bell } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface TopbarProps {
   onMobileMenuOpen: () => void;
 }
 
 export default function Topbar({ onMobileMenuOpen }: TopbarProps) {
+  const { user } = useAuth();
+  const displayName = user?.user_metadata?.full_name || user?.email || 'Guest User';
+  const initials = user?.email
+    ? (user.user_metadata?.full_name
+        ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+        : user.email.substring(0, 2).toUpperCase())
+    : 'GU';
+
   return (
     <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 flex-shrink-0 z-20">
       {/* Mobile menu toggle */}
@@ -47,11 +56,13 @@ export default function Topbar({ onMobileMenuOpen }: TopbarProps) {
 
         <div className="flex items-center gap-2 pl-3 border-l border-border">
           <div className="w-7 h-7 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs">
-            SS
+            {initials}
           </div>
           <div className="hidden sm:block text-left leading-tight">
-            <p className="text-xs font-semibold text-foreground">Sudies Shaikh</p>
-            <p className="text-[10px] text-muted-foreground font-mono-tech">Consulting Engineer</p>
+            <p className="text-xs font-semibold text-foreground">{displayName}</p>
+            <p className="text-[10px] text-muted-foreground font-mono-tech">
+              {user ? 'Civil Engineer' : 'Visitor'}
+            </p>
           </div>
         </div>
       </div>

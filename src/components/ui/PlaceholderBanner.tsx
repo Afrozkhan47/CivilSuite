@@ -12,7 +12,7 @@ export default function PlaceholderBanner({
 }: PlaceholderBannerProps) {
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/8 ${
+      className={`flex items-start gap-3 rounded-sm border border-warning/30 bg-warning/8 ${
         compact ? 'p-3' : 'p-4'
       }`}
     >

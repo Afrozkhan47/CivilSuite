@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, ArrowRight, Layers } from 'lucide-react';
@@ -30,10 +30,10 @@ const schema = z.object({
   }),
   admixture: z.object({
     type: z.string().optional(),
-    dosage: z.coerce.number().min(0).max(10).optional(),
+    dosage: z.coerce.number().min(0, 'Dosage cannot be negative').optional(),
     dosageBasis: z.enum(['percent_cement', 'liters_per_m3']).optional(),
-    waterReduction: z.coerce.number().min(0).max(40).optional(),
-    specificGravity: z.coerce.number().min(1.0).max(1.5).optional(),
+    waterReduction: z.coerce.number().min(0, 'Water reduction cannot be negative').max(50, 'Max water reduction is 50%').optional(),
+    specificGravity: z.coerce.number().min(0.5, 'Min SG is 0.5').max(2.5, 'Max SG is 2.5').optional(),
   }),
 });
 
@@ -62,11 +62,13 @@ interface Step3Props {
 }
 
 export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3Props) {
+  const isInitiallyHasAdmix = data.admixture?.type !== 'None' && ((data.admixture?.dosage ?? 0) > 0 || (data.admixture?.waterReduction ?? 0) > 0);
+  const [hasAdmixture, setHasAdmixture] = React.useState<boolean>(isInitiallyHasAdmix);
+
   const {
     register,
     handleSubmit,
     watch,
-    control,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
@@ -91,10 +93,10 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
       },
       water: { source: data.water?.source || 'Potable water' },
       admixture: {
-        type: data.admixture?.type || 'Superplasticizer',
-        dosage: data.admixture?.dosage || 0,
+        type: isInitiallyHasAdmix ? (data.admixture?.type || 'Superplasticizer') : 'None',
+        dosage: isInitiallyHasAdmix ? (data.admixture?.dosage || 0) : 0,
         dosageBasis: (data.admixture?.dosageBasis === 'liters_per_m3' ? 'liters_per_m3' : 'percent_cement') as FormValues['admixture']['dosageBasis'],
-        waterReduction: data.admixture?.waterReduction || 0,
+        waterReduction: isInitiallyHasAdmix ? (data.admixture?.waterReduction || 0) : 0,
         specificGravity: data.admixture?.specificGravity || 1.15,
       },
     },
@@ -104,7 +106,36 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
   const selectedAngularity = watch('coarseAggregate.angularity');
   const dosageBasis = watch('admixture.dosageBasis');
 
+  const handleToggleAdmixture = (enabled: boolean) => {
+    setHasAdmixture(enabled);
+    if (!enabled) {
+      setValue('admixture.type', 'None');
+      setValue('admixture.dosage', 0);
+      setValue('admixture.waterReduction', 0);
+    } else {
+      setValue('admixture.type', 'Superplasticizer');
+      setValue('admixture.dosage', 1.0);
+      setValue('admixture.waterReduction', 15);
+    }
+  };
+
+  const handleDosageBasisChange = (newBasis: 'percent_cement' | 'liters_per_m3') => {
+    if (newBasis !== dosageBasis) {
+      setValue('admixture.dosageBasis', newBasis);
+      setValue('admixture.dosage', 0); // Unit change safety: clear dosage to prevent silent unit misinterpretation
+    }
+  };
+
   const onSubmit = (values: FormValues) => {
+    if (!hasAdmixture) {
+      values.admixture = {
+        type: 'None',
+        dosage: 0,
+        dosageBasis: 'percent_cement',
+        waterReduction: 0,
+        specificGravity: 1.15,
+      };
+    }
     onNext(values as MaterialProperties);
   };
 
@@ -208,7 +239,7 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-1">
                 <label className="label-text" htmlFor="faSg">
                   Specific Gravity (S_fa) <span className="text-error">*</span>
@@ -236,6 +267,7 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
                   placeholder="1.0"
                   {...register('fineAggregate.waterAbsorption')}
                 />
+                <p className="helper-text">IS 2386 Part 3 (Oven-dry to SSD)</p>
                 {errors.fineAggregate?.waterAbsorption && <p className="error-text">{errors.fineAggregate.waterAbsorption.message}</p>}
               </div>
 
@@ -251,6 +283,22 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
                   placeholder="0.0"
                   {...register('fineAggregate.surfaceMoisture')}
                 />
+                <p className="helper-text">0.0% assumes oven-dry batch (IS 10262 Cl 7)</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="label-text" htmlFor="faFm">
+                  Fineness Modulus <span className="text-muted-foreground text-[10px] font-normal">(Informational)</span>
+                </label>
+                <input
+                  id="faFm"
+                  type="number"
+                  step="0.01"
+                  className="input-field font-mono-tech text-xs rounded-sm"
+                  placeholder="2.80"
+                  {...register('fineAggregate.finesModulus')}
+                />
+                <p className="helper-text">Table 5 proportion uses FA Zone</p>
               </div>
             </div>
           </div>
@@ -315,6 +363,7 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
                   placeholder="0.5"
                   {...register('coarseAggregate.waterAbsorption')}
                 />
+                <p className="helper-text">IS 2386 Part 3 (Oven-dry to SSD)</p>
                 {errors.coarseAggregate?.waterAbsorption && <p className="error-text">{errors.coarseAggregate.waterAbsorption.message}</p>}
               </div>
 
@@ -330,43 +379,81 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
                   placeholder="0.0"
                   {...register('coarseAggregate.surfaceMoisture')}
                 />
+                <p className="helper-text">0.0% assumes oven-dry batch (IS 10262 Cl 7)</p>
               </div>
             </div>
           </div>
 
           {/* 04 CHEMICAL ADMIXTURE */}
-          <div className="space-y-3 pt-2 border-t border-border/60">
+          <div className="space-y-4 pt-2 border-t border-border/60">
             <div className="flex items-center justify-between pb-1.5 border-b border-border/80">
               <h3 className="text-xs font-bold text-primary uppercase tracking-wider font-mono-tech">
                 04 ADMIXTURE — Chemical Plasticizer / Superplasticizer (IS 9103)
               </h3>
+              <span className="text-[10px] text-muted-foreground">IS 9103 / IS 10262 Clause 6.3.1</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="label-text">Admixture Dosage Basis</label>
-                <Controller
-                  name="admixture.dosageBasis"
-                  control={control}
-                  render={({ field }) => (
+            {/* ADMIXTURE SELECTION TOGGLE */}
+            <div className="space-y-2">
+              <label className="label-text">Admixture Status</label>
+              <div className="grid grid-cols-2 gap-3 max-w-md font-mono-tech text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleToggleAdmixture(false)}
+                  className={`p-2.5 rounded-sm text-left border transition-all ${
+                    !hasAdmixture
+                      ? 'bg-primary/10 border-primary text-primary font-bold'
+                      : 'bg-background border-border text-muted-foreground hover:border-primary/40'
+                  }`}
+                >
+                  <span className="block text-xs font-bold text-foreground">None (No Admixture)</span>
+                  <span className="block text-[10px] text-muted-foreground mt-0.5">Plain Concrete / Baseline</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleAdmixture(true)}
+                  className={`p-2.5 rounded-sm text-left border transition-all ${
+                    hasAdmixture
+                      ? 'bg-primary/10 border-primary text-primary font-bold'
+                      : 'bg-background border-border text-muted-foreground hover:border-primary/40'
+                  }`}
+                >
+                  <span className="block text-xs font-bold text-foreground">Plasticizer / Superplasticizer</span>
+                  <span className="block text-[10px] text-muted-foreground mt-0.5">Water Reducing Admixture</span>
+                </button>
+              </div>
+            </div>
+
+            {!hasAdmixture ? (
+              <div className="p-3 rounded-sm bg-muted/40 border border-border text-xs text-muted-foreground font-sans">
+                <p>
+                  <strong>Note:</strong> No chemical admixture will be added. Water content and volumetric yield will be calculated directly from IS 10262 Table 4 baseline water requirement.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-sm border border-primary/30 bg-primary/5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* DOSAGE BASIS */}
+                  <div className="space-y-1.5">
+                    <label className="label-text">Admixture Dosage Basis <span className="text-error">*</span></label>
                     <div className="grid grid-cols-2 gap-2 font-mono-tech text-xs">
                       <button
                         type="button"
-                        onClick={() => field.onChange('percent_cement')}
+                        onClick={() => handleDosageBasisChange('percent_cement')}
                         className={`p-2 rounded-sm text-left border font-bold ${
-                          field.value === 'percent_cement'
+                          dosageBasis === 'percent_cement'
                             ? 'bg-primary/10 border-primary text-primary'
                             : 'bg-background border-border text-muted-foreground'
                         }`}
                       >
                         <span className="block text-xs font-bold text-foreground">% by Cement Mass</span>
-                        <span className="block text-[10px] text-muted-foreground">Standard % dosage</span>
+                        <span className="block text-[10px] text-muted-foreground">Mass Basis (% of cement)</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => field.onChange('liters_per_m3')}
+                        onClick={() => handleDosageBasisChange('liters_per_m3')}
                         className={`p-2 rounded-sm text-left border font-bold ${
-                          field.value === 'liters_per_m3'
+                          dosageBasis === 'liters_per_m3'
                             ? 'bg-primary/10 border-primary text-primary'
                             : 'bg-background border-border text-muted-foreground'
                         }`}
@@ -375,55 +462,61 @@ export default function Step3MaterialProperties({ data, onNext, onPrev }: Step3P
                         <span className="block text-[10px] text-muted-foreground">Volumetric L/m³</span>
                       </button>
                     </div>
-                  )}
-                />
-              </div>
+                  </div>
 
-              <div className="space-y-1">
-                <label className="label-text" htmlFor="admixDosage">
-                  Dosage Rate {dosageBasis === 'liters_per_m3' ? '(L/m³)' : '(% by cement mass)'}
-                </label>
-                <input
-                  id="admixDosage"
-                  type="number"
-                  step="0.1"
-                  className="input-field font-mono-tech text-xs rounded-sm"
-                  placeholder="1.0"
-                  {...register('admixture.dosage')}
-                />
-                <p className="helper-text">Enter 0 if no admixture is used</p>
-              </div>
+                  {/* DOSAGE RATE */}
+                  <div className="space-y-1">
+                    <label className="label-text" htmlFor="admixDosage">
+                      Dosage Rate {dosageBasis === 'liters_per_m3' ? '(L/m³ of concrete)' : '(% by mass of cement)'} <span className="text-error">*</span>
+                    </label>
+                    <input
+                      id="admixDosage"
+                      type="number"
+                      step="0.1"
+                      className="input-field font-mono-tech text-xs rounded-sm"
+                      placeholder={dosageBasis === 'liters_per_m3' ? '1.5' : '1.0'}
+                      {...register('admixture.dosage')}
+                    />
+                    <p className="helper-text">Verify dosage against manufacturer technical data sheet (TDS)</p>
+                    {errors.admixture?.dosage && <p className="error-text">{errors.admixture.dosage.message}</p>}
+                  </div>
 
-              <div className="space-y-1">
-                <label className="label-text" htmlFor="admixWr">
-                  Water Reduction (%)
-                </label>
-                <input
-                  id="admixWr"
-                  type="number"
-                  step="any"
-                  className="input-field font-mono-tech text-xs rounded-sm"
-                  placeholder="15"
-                  {...register('admixture.waterReduction')}
-                />
-                <p className="helper-text">Trial water reduction (e.g. 15%–30%)</p>
-              </div>
+                  {/* WATER REDUCTION */}
+                  <div className="space-y-1">
+                    <label className="label-text" htmlFor="admixWr">
+                      Water Reduction (%) <span className="text-error">*</span>
+                    </label>
+                    <input
+                      id="admixWr"
+                      type="number"
+                      step="0.5"
+                      className="input-field font-mono-tech text-xs rounded-sm"
+                      placeholder="15.0"
+                      {...register('admixture.waterReduction')}
+                    />
+                    <p className="helper-text">Water reduction achieved in trials (e.g. 15% for plasticizer, up to 30% for superplasticizer)</p>
+                    {errors.admixture?.waterReduction && <p className="error-text">{errors.admixture.waterReduction.message}</p>}
+                  </div>
 
-              <div className="space-y-1">
-                <label className="label-text" htmlFor="admixSg">
-                  Admixture Specific Gravity (S_adm)
-                </label>
-                <input
-                  id="admixSg"
-                  type="number"
-                  step="0.01"
-                  className="input-field font-mono-tech text-xs rounded-sm"
-                  placeholder="1.15"
-                  {...register('admixture.specificGravity')}
-                />
-                <p className="helper-text">Required for volumetric yield & dosage calculation</p>
+                  {/* SPECIFIC GRAVITY */}
+                  <div className="space-y-1">
+                    <label className="label-text" htmlFor="admixSg">
+                      Admixture Specific Gravity (S_adm) <span className="text-error">*</span>
+                    </label>
+                    <input
+                      id="admixSg"
+                      type="number"
+                      step="0.01"
+                      className="input-field font-mono-tech text-xs rounded-sm"
+                      placeholder="1.15"
+                      {...register('admixture.specificGravity')}
+                    />
+                    <p className="helper-text">Required for volumetric yield &amp; dosage mass calculation (standard liquid: ~1.15–1.20)</p>
+                    {errors.admixture?.specificGravity && <p className="error-text">{errors.admixture.specificGravity.message}</p>}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -15,6 +15,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import GradeDistributionChart from './GradeDistributionChart';
 import { useProjectStore } from '@/store/useProjectStore';
 import type { SavedProject } from '@/features/mix-design/types';
+import { getCentralizedMixStatus } from '@/features/mix-design/utils/status';
 
 export default function DashboardContent() {
   const { projects } = useProjectStore();
@@ -59,7 +60,7 @@ export default function DashboardContent() {
             </Link>
             <Link href="/saved-projects" className="btn-secondary flex items-center gap-2">
               <FolderOpen size={14} />
-              <span>Open Saved Ledger</span>
+              <span>Project History</span>
             </Link>
           </div>
         </div>
@@ -88,15 +89,15 @@ export default function DashboardContent() {
           <div className="flex items-center justify-between pb-2 border-b border-border">
             <div>
               <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">
-                Recent Mix Design Calculations Ledger
+                Recent Mix Design Project History
               </h2>
               <p className="text-xs text-muted-foreground">
                 IS 10262 proportioning traces and field batch specifications
               </p>
             </div>
             {projects.length > 0 && (
-              <Link href="/saved-projects" className="text-xs text-primary font-bold flex items-center gap-1 hover:underline">
-                <span>View Full Ledger</span>
+              <Link href="/saved-projects" className="text-xs text-primary font-bold flex items-center gap-1 hover:underline font-mono-tech">
+                <span>View Full History</span>
                 <ChevronRight size={13} />
               </Link>
             )}
@@ -120,7 +121,7 @@ export default function DashboardContent() {
             <div className="border border-border rounded overflow-hidden bg-card">
               <table className="w-full text-xs text-left border-collapse font-tabular">
                 <thead>
-                  <tr className="bg-muted/60 border-b border-border text-muted-foreground uppercase font-bold text-[10px] tracking-wider">
+                  <tr className="bg-muted/60 border-b border-border text-muted-foreground uppercase font-bold text-[10px] tracking-wider font-mono-tech">
                     <th className="px-4 py-2.5">Project & Client</th>
                     <th className="px-3 py-2.5">Grade</th>
                     <th className="px-3 py-2.5 hidden sm:table-cell">Exposure</th>
@@ -134,6 +135,8 @@ export default function DashboardContent() {
                     const pd = project.input.projectDetails;
                     const dp = project.input.designParameters;
                     const cement = project.result?.cement ?? 0;
+                    const statusInfo = project.result ? getCentralizedMixStatus(project.result) : null;
+
                     return (
                       <tr key={project.id} className="hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3 font-medium text-foreground">
@@ -155,10 +158,24 @@ export default function DashboardContent() {
                           {cement > 450 && <AlertTriangle size={12} className="inline ml-1 text-error" />}
                         </td>
                         <td className="px-3 py-3">
-                          <StatusBadge variant={project.status} label={project.status} />
+                          {statusInfo ? (
+                            <span
+                              className={`px-2 py-0.5 rounded-sm text-[10px] font-mono-tech font-bold uppercase tracking-wider border ${
+                                statusInfo.status === 'COMPLIANT'
+                                  ? 'bg-success/15 text-success border-success/30'
+                                  : statusInfo.status === 'NON_COMPLIANT'
+                                  ? 'bg-error/15 text-error border-error/30'
+                                  : 'bg-warning/15 text-warning border-warning/30'
+                              }`}
+                            >
+                              {statusInfo.heroBadge}
+                            </span>
+                          ) : (
+                            <StatusBadge variant={project.status} label={project.status} />
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Link href="/mix-design-results" className="btn-secondary py-1 text-[11px]">
+                          <Link href={`/mix-design-results?projectId=${project.id}`} className="btn-secondary py-1 text-[11px] font-mono-tech">
                             View Trace
                           </Link>
                         </td>

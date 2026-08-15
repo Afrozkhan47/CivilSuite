@@ -6,7 +6,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className = '' }: SkeletonProps) {
-  return <div className={`shimmer rounded-lg ${className}`} />;
+  return <div className={`shimmer rounded-sm ${className}`} />;
 }
 
 export function MetricCardSkeleton() {
@@ -32,5 +32,5 @@ export function TableRowSkeleton({ cols = 7 }: { cols?: number }) {
 }
 
 export function ChartSkeleton({ height = 200 }: { height?: number }) {
-  return <Skeleton className={`w-full rounded-xl`} style={{ height }} />;
+  return <Skeleton className={`w-full rounded-sm`} style={{ height }} />;
 }

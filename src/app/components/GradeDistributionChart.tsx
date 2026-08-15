@@ -26,9 +26,9 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-card border border-border rounded-xl shadow-card-md px-3 py-2.5">
-      <p className="text-sm font-bold text-foreground">{label}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">
+    <div className="bg-card border border-border rounded-sm shadow-card-md px-3 py-2.5 font-mono-tech">
+      <p className="text-xs font-bold text-foreground">{label}</p>
+      <p className="text-[11px] text-muted-foreground mt-0.5">
         {payload[0].value} project{payload[0].value !== 1 ? 's' : ''}
       </p>
     </div>

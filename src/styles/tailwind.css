@@ -64,9 +64,13 @@
   --input: #263445;
   --ring: #2E6F95;
   --warning: #D97706;
+  --warning-foreground: #FFFFFF;
   --error: #D32F2F;
+  --error-foreground: #FFFFFF;
   --success: #18794E;
+  --success-foreground: #FFFFFF;
   --info: #2E6F95;
+  --info-foreground: #FFFFFF;
 }
 
 @layer base {
